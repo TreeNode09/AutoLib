@@ -3,6 +3,7 @@
 <div>
     <input type="text" placeholder="Book title or ISBN" v-model="searchText">
     <button @click="search">Search</button>
+    <button @click="search">↺</button>
 </div>
 <div v-if="props.type===0">
     <input type="file" accept=".txt" ref="newFile" @change="readFile">
@@ -25,14 +26,14 @@
     <tbody v-for="(result,index) in results">
         <tr>
             <td v-if="props.type===0">
-                <button v-if="showingIndex!==index" @click="showBooks(result.titleId, index)">▾</button>
+                <button v-if="showingIndex!==index" @click="showBooks(result, index)">▾</button>
                 <button v-else @click="unshowBooks()">▴</button>
                 <span v-if="isDeleting===true">
-                    <button @click="deleteTitle(result.titleId)" class="red">D</button>
+                    <button @click="deleteTitle(result, index)" class="red">D</button>
                 </span>
                 <span v-else>
-                    <button v-if="editingIndex!==index" @click="editTitle(result, index)">E</button>
-                    <button v-if="editingIndex===index" @click="saveEdit(result, result.titleId)">√</button>
+                    <button v-if="editingIndex!==index" @click="editTitle(result)">E</button>
+                    <button v-if="editingIndex===index" @click="saveEdit(result)">√</button>
                     <button v-if="editingIndex===index" @click="cancelEdit()">x</button>
                 </span>
             </td>
@@ -66,12 +67,13 @@
                         <tr v-for="(book, bookIndex) in showedBooks">
                             <td>
                                 <span v-if="isDeleting===true">
-                                    <button @click="deleteBook(book.bookId)" class="red">D</button>
+                                    <!-- 要使用showBooks更新图书 -->
+                                    <button @click="deleteBook(book, result, index)" class="red">D</button>
                                 </span>
                                 <span v-else>
                                     <button v-if="editingBookIndex!==bookIndex" @click="editBook(book, bookIndex)">E</button>
                                     <button v-if="editingBookIndex===bookIndex"
-                                    @click="saveBookEdit(book, book.bookId)">√</button>
+                                    @click="saveBookEdit(book)">√</button>
                                     <button v-if="editingBookIndex===bookIndex" @click="cancelBookEdit()">x</button>
                                 </span>
                             </td>
@@ -134,8 +136,8 @@ function search(){
     else {isFound.value = true}
 }
 
-function showBooks(titleId, index){
-    showedBooks.value = books.searchBook(titleId)
+function showBooks(info, index){
+    showedBooks.value = books.searchBook(info.titleId)
     showingIndex.value = index
 }
 
@@ -179,11 +181,13 @@ function editTitle(info, index){
     }
 }
 
-function saveEdit(info, titleId){
-    editError.value = titles.editTitle(titleId, editInfo.value)   
-    let keys = Object.keys(info)
-    for(let i = 0; i < keys.length; i++){
-        info[keys[i]] = editInfo.value[keys[i]]
+function saveEdit(info){
+    editError.value = titles.editTitle(info.titleId, editInfo.value)
+    if(editError.value === 'isOK'){
+        let keys = Object.keys(info)
+        for(let i = 0; i < keys.length; i++){
+            info[keys[i]] = editInfo.value[keys[i]]
+        }
     }
     cancelEdit()
 }
@@ -201,11 +205,13 @@ function editBook(info, index){
     }
 }
 
-function saveBookEdit(info, bookId){
-    editError.value = books.editBook(bookId, editInfo.value)   
-    let keys = Object.keys(info)
-    for(let i = 0; i < keys.length; i++){
-        info[keys[i]] = editInfo.value[keys[i]]
+function saveBookEdit(info){
+    editError.value = books.editBook(info.bookId, editInfo.value)
+    if(editError.value === 'isOK'){
+        let keys = Object.keys(info)
+        for(let i = 0; i < keys.length; i++){
+            info[keys[i]] = editInfo.value[keys[i]]
+        }
     }
     cancelBookEdit()
     //更新result
@@ -221,14 +227,17 @@ function startDelete(){
     isDeleting.value = true
 }
 
-function deleteTitle(titleId){
-    editError.value = titles.deleteTitle(titleId)
+function deleteTitle(info, index){
+    editError.value = titles.deleteTitle(info.titleId)
+    if(showingIndex.value === index){
+        showingIndex.value = -1
+    }
     search()
 }
 
-function deleteBook(bookId){
-    editError.value = books.deleteBook(bookId)
-    search()
+function deleteBook(bookInfo, titleInfo, index){
+    editError.value = books.deleteBook(bookInfo.bookId)
+    showBooks(titleInfo, index)
 }
 
 function endDelete(){
