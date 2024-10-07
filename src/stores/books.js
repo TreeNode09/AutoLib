@@ -10,11 +10,21 @@ export const useBooks = defineStore('books', () => {
 
     const nextId = ref(1)
 
-    function searchBook(titleId){
+    function searchBook(titleId, type){
         let result = []
         for(let i = 0; i < books.value.length; i++){
             if(books.value[i].titleId === titleId){
-                result.push(books.value[i])
+                if(type === 1){
+                    if(books.value[i].bookStat === 'Shelf'){
+                        let info = {}
+                        let keys = Object.keys(thead.value)
+                        for(let j = 0; j < 4; j++){
+                            info[keys[j]] = books.value[i][keys[j]]
+                        }
+                        result.push(info)
+                    }
+                }
+                else {result.push(books.value[i])}               
             }
         }
 
@@ -57,6 +67,20 @@ export const useBooks = defineStore('books', () => {
         }
     }
 
+    function updateBatchBooks(str){
+        let lines = str.split('\r\n')
+        for(let i = 0; i < lines.length; i++){
+            let splited = lines[i].split(' ')
+            for(let j = 0; j < books.value.length; j++){
+                if(splited[0] === books.value[j].bookId.toString()){
+                    books.value[j].bookStat = 'Shelf'
+                    books.value[j].shelf = splited[1]
+                }
+            }
+        }
+        return('OK')
+    }
+
     function deleteBooks(titleId){
         for(let i = 0; i < books.value.length; i++){
             if(books.value[i].titleId === titleId){
@@ -74,5 +98,5 @@ export const useBooks = defineStore('books', () => {
         }
     }
 
-    return{thead, books, searchBook, searchAvailable, searchNumber, importBooks, editBook, deleteBooks, deleteBook}
+    return{thead, books, searchBook, searchAvailable, searchNumber, importBooks, editBook, updateBatchBooks, deleteBooks, deleteBook}
 })

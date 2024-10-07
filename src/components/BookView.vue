@@ -7,8 +7,12 @@
 </div>
 <div v-if="props.type===0">
     <input type="file" accept=".txt" ref="newFile" @change="readFile">
-    <button v-if="isImporting" @click="importBooks">Confirm</button>
-    <button v-if="isImporting" @click="cancelImport">Cancel</button>
+    <span v-if="isImporting">
+        <input type="radio" name="fileType" checked @click="fileType=0">Import
+        <input type="radio" name="fileType" @click="fileType=1">Update
+        <button @click="importBooks">Confirm</button>
+        <button @click="cancelImport">Cancel</button>
+    </span>   
     <button v-if="isDeleting===false" @click="startDelete()" class="red right">Delete</button>
     <button v-else @click="endDelete()" class="right">Done</button>
 </div>
@@ -25,22 +29,20 @@
     </tr>
     <tbody v-for="(result,index) in results">
         <tr>
-            <td v-if="props.type===0">
-                <button v-if="showingIndex!==index" @click="showBooks(result, index)">▾</button>
+            <td>
+                <button v-if="showingIndex!==index" @click="showBooks(result, index)"
+                :disabled="props.type===1&&result.available===0">▾</button>
                 <button v-else @click="unshowBooks()">▴</button>
-                <span v-if="isDeleting===true">
-                    <button @click="deleteTitle(result, index)" class="red">D</button>
-                </span>
-                <span v-else>
-                    <button v-if="editingIndex!==index" @click="editTitle(result)">E</button>
-                    <button v-if="editingIndex===index" @click="saveEdit(result)">√</button>
-                    <button v-if="editingIndex===index" @click="cancelEdit()">x</button>
+                <span v-if="props.type===0">
+                    <span v-if="isDeleting===false">                    
+                        <button v-if="editingIndex!==index" @click="editTitle(result, index)">E</button>
+                        <button v-if="editingIndex===index" @click="saveEdit(result)">√</button>
+                        <button v-if="editingIndex===index" @click="cancelEdit()">x</button>
+                    </span>
+                    <button v-else @click="deleteTitle(result, index)" class="red">D</button>
                 </span>
             </td>
-            <td v-else>
-                <button :disabled="result.available===0">+</button>
-            </td>
-            <td v-for="key in Object.keys(titles.thead)">         
+            <td v-for="key in Object.keys(titles.thead)">
                 <div v-if="editingIndex===index">
                     <span v-if="key==='titleId'">{{ result[key] }}</span>
                     <span v-if="key==='number'">{{ result.available }}/{{ result.number }}</span>
@@ -67,13 +69,12 @@
                         <tr v-for="(book, bookIndex) in showedBooks">
                             <td>
                                 <span v-if="isDeleting===true">
-                                    <!-- 要使用showBooks更新图书 -->
                                     <button @click="deleteBook(book, result, index)" class="red">D</button>
                                 </span>
                                 <span v-else>
                                     <button v-if="editingBookIndex!==bookIndex" @click="editBook(book, bookIndex)">E</button>
                                     <button v-if="editingBookIndex===bookIndex"
-                                    @click="saveBookEdit(book)">√</button>
+                                    @click="saveBookEdit(book, result, index)">√</button>
                                     <button v-if="editingBookIndex===bookIndex" @click="cancelBookEdit()">x</button>
                                 </span>
                             </td>
@@ -108,6 +109,7 @@ const props = defineProps(['type'])
 const file = ref(null)
 const newFile = ref()
 const fileString = ref('')
+const fileType = ref(0)
 const importError = ref('OK')
 const isImporting = ref(false)
 
@@ -137,7 +139,7 @@ function search(){
 }
 
 function showBooks(info, index){
-    showedBooks.value = books.searchBook(info.titleId)
+    showedBooks.value = books.searchBook(info.titleId, props.type)
     showingIndex.value = index
 }
 
@@ -160,7 +162,8 @@ function readFile(event){
 }
 
 function importBooks(){
-    importError.value = titles.importBatchTitles(fileString.value)
+    if(fileType.value === 0) {importError.value = titles.importBatchTitles(fileString.value)}
+    else {importError.value = books.updateBatchBooks(fileString.value)}
 
     newFile.value.value = ''
     isImporting.value = false
@@ -205,17 +208,18 @@ function editBook(info, index){
     }
 }
 
-function saveBookEdit(info){
-    editError.value = books.editBook(info.bookId, editInfo.value)
+function saveBookEdit(bookInfo, titleInfo, index){
+    editError.value = books.editBook(bookInfo.bookId, editInfo.value)
     if(editError.value === 'isOK'){
-        let keys = Object.keys(info)
+        let keys = Object.keys(bookInfo)
         for(let i = 0; i < keys.length; i++){
-            info[keys[i]] = editInfo.value[keys[i]]
+            bookInfo[keys[i]] = editInfo.value[keys[i]]
         }
     }
     cancelBookEdit()
-    //更新result
+    //更新result和books
     search()
+    showBooks(titleInfo, index)
 }
 
 function cancelBookEdit(){
@@ -237,6 +241,7 @@ function deleteTitle(info, index){
 
 function deleteBook(bookInfo, titleInfo, index){
     editError.value = books.deleteBook(bookInfo.bookId)
+    search()
     showBooks(titleInfo, index)
 }
 
