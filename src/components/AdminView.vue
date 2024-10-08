@@ -11,6 +11,7 @@
 </template>
     
 <script setup>
+import { onMounted } from 'vue'
 import { useStats } from '@/stores/stats.js'
     
 import register from '@/components/RegisterView.vue'
@@ -20,6 +21,10 @@ import book from '@/components/BookView.vue'
 import home from '@/components/AdminHome.vue' 
    
 const stats = useStats()
+
+onMounted(() => {
+    if(window.localStorage.getItem('isAdminLogin') === 'true') {stats.updateAdmin('Home')}
+})
 </script>
     
  <style scoped>

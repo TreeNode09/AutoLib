@@ -4,9 +4,9 @@ import { defineStore } from 'pinia'
 export const useUsers = defineStore('users', () => {
     const users = ref([
         {userId: 0, username: 'Admin', password: 'password', type: 0},
-        {userId: 1, username: 'Alex', password: 'password', type: 1, maxBook: 2, maxTime: 30},
-        {userId: 2, username: 'Ben', password: 'password', type: 1, maxBook: 2, maxTime: 30},
-        {userId: 3, username: 'Carl', password: 'password', type: 1, maxBook: 2, maxTime: 30}
+        {userId: 1, username: 'Alex', password: 'password', type: 1, maxBook: 5, maxTime: 30},
+        {userId: 2, username: 'Ben', password: 'password', type: 1, maxBook: 5, maxTime: 30},
+        {userId: 3, username: 'Carl', password: 'password', type: 1, maxBook: 5, maxTime: 30}
     ])
 
     const nextId = ref(4)
@@ -23,7 +23,7 @@ export const useUsers = defineStore('users', () => {
 
         if(isUsed === false){
             if(type === 0){
-                users.value.push({userId: nextId.value, username: username, password: password, type: type, maxBook: 2, maxTime: 30})
+                users.value.push({userId: nextId.value, username: username, password: password, type: type, maxBook: 5, maxTime: 30})
             }
             if(type === 1){
                 users.value.push({userId: nextId.value, username: username, password: password, type: type})

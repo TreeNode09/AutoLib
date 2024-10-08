@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 export const useStats = defineStore('stats', () => {
     const adminStat = ref('Login')
-    const readerStat = ref('Login')
+    const readerStat = ref('Home')
     
 
     function updateAdmin(newStat){

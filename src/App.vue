@@ -31,7 +31,7 @@ h4, h5, h6
     margin: 0 0 5px 0;
 }
 
-button, input
+button, input, select
 {
     font-size: large;
 

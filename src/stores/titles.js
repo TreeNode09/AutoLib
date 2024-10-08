@@ -21,7 +21,7 @@ export const useTitles = defineStore('titles', () => {
             for(let i = 0; i < titles.value.length; i++){
                 if(titles.value[i].isbn === searchText){
                     //补充图书的数量信息
-                    let result = titles.value[i]
+                    let result = Object.assign({}, titles.value[i])
                     result.available = books.searchAvailable(titles.value[i].titleId)
                     result.number = books.searchNumber(titles.value[i].titleId)
                     results.push(result)
@@ -32,7 +32,7 @@ export const useTitles = defineStore('titles', () => {
         else{            
             for(let i = 0; i < titles.value.length; i++){
                 if(titles.value[i].title.search(searchText) !== -1){
-                    let result = titles.value[i]
+                    let result = Object.assign({}, titles.value[i])
                     result.available = books.searchAvailable(titles.value[i].titleId)
                     result.number = books.searchNumber(titles.value[i].titleId)
                     results.push(result)
@@ -146,5 +146,39 @@ export const useTitles = defineStore('titles', () => {
         }
     }
 
-    return{thead, titles, searchTitle, importBatchTitles, editTitle, deleteTitle}
+    function scanBooks(str, reader){
+        let results = []
+        let scanType = ''
+
+        let lines = str.split('\r\n')
+        for(let i = 0; i < lines.length; i++){
+            let book = books.getBookByBookId(lines[i])
+            if(book === null) {return(['Invalid bookId!', null])}
+
+            for(let j = 0; j < titles.value.length; j++){
+                if(titles.value[j].titleId === book.titleId){
+                    console.log(titles.value[j])
+                    if(i === 0){
+                        if(book.bookStat === 'Shelf') {scanType = 'Borrow'}
+                        else if(book.bookStat === 'Lent') {scanType = 'Return'}
+                    }
+                    if(book.bookStat === 'Stock') {return(['Can\'t return book in stock!', null])}
+                    if(scanType === 'Borrow'){
+                        if(book.bookStat === 'Lent') {return(['Can\'t both borrow and return!', null])}
+                        if(i > reader.maxBook) {return(['Books more than maxBook!', null])}
+                    }
+                    else if(scanType === 'Return') {
+                        if(book.bookStat !== 'Shelf') {return(['Can\'t both borrow and return!', null])}
+                        if(book.readerId !== reader.readerId) {return(['Can\'t return books of others!', null])}
+                        if(i > reader.maxBook) {return(['Ha?', null])}
+                    }
+                    results.push(titles.value[j])
+                }
+            }
+        }
+
+        return [scanType, results]
+    }
+
+    return{thead, titles, searchTitle, importBatchTitles, editTitle, deleteTitle, scanBooks}
 })

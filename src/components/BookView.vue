@@ -80,7 +80,14 @@
                             </td>
                             <td v-for="key in Object.keys(books.thead)">
                                 <div v-if="editingBookIndex===bookIndex">
-                                    <span v-if="key==='bookId'||key==='titleId'">{{ book[key] }}</span>
+                                    <span v-if="key==='bookId'||key==='titleId'||key==='bookStat'">
+                                        <select v-if="key==='bookStat'" v-model="editInfo.bookStat">
+                                            <option value="Stock" :selected="editInfo.bookStat==='Stock'">Stock</option>
+                                            <option value="Shelf" :selected="editInfo.bookStat==='Shelf'">Shelf</option>
+                                            <option value="Lent" :selected="editInfo.bookStat==='Lent'">Lent</option>
+                                        </select>
+                                        <span v-else>{{ book[key] }}</span>
+                                    </span>
                                     <input v-else v-model="editInfo[key]">
                                 </div>
                                 <div v-else>{{ book[key] }}</div>
@@ -165,8 +172,7 @@ function importBooks(){
     if(fileType.value === 0) {importError.value = titles.importBatchTitles(fileString.value)}
     else {importError.value = books.updateBatchBooks(fileString.value)}
 
-    newFile.value.value = ''
-    isImporting.value = false
+    cancelImport()
     search()
 }
 
@@ -177,22 +183,14 @@ function cancelImport(){
 
 function editTitle(info, index){
     editingIndex.value = index
-    //不能让editInfo和result绑定！
-    let keys = Object.keys(info)
-    for(let i = 0; i < keys.length; i++){
-        editInfo.value[keys[i]] = info[keys[i]]
-    }
+    editInfo.value = Object.assign({}, info)
 }
 
 function saveEdit(info){
     editError.value = titles.editTitle(info.titleId, editInfo.value)
-    if(editError.value === 'isOK'){
-        let keys = Object.keys(info)
-        for(let i = 0; i < keys.length; i++){
-            info[keys[i]] = editInfo.value[keys[i]]
-        }
-    }
+    if(editError.value === 'isOK') {info = Object.assign({}, editInfo.value)}  
     cancelEdit()
+    search()
 }
 
 function cancelEdit(){
@@ -202,20 +200,12 @@ function cancelEdit(){
 
 function editBook(info, index){
     editingBookIndex.value = index
-    let keys = Object.keys(info)
-    for(let i = 0; i < keys.length; i++){
-        editInfo.value[keys[i]] = info[keys[i]]
-    }
+    editInfo.value = Object.assign({}, info)
 }
 
 function saveBookEdit(bookInfo, titleInfo, index){
     editError.value = books.editBook(bookInfo.bookId, editInfo.value)
-    if(editError.value === 'isOK'){
-        let keys = Object.keys(bookInfo)
-        for(let i = 0; i < keys.length; i++){
-            bookInfo[keys[i]] = editInfo.value[keys[i]]
-        }
-    }
+    if(editError.value === 'isOK') {bookInfo = Object.assign({}, editInfo.value)}
     cancelBookEdit()
     //更新result和books
     search()

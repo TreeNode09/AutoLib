@@ -12,7 +12,7 @@
 </template>
     
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useStats } from '@/stores/stats.js'
 import { useUsers } from '@/stores/users.js'
     
@@ -28,8 +28,8 @@ const passwordError = ref(false)
 const registerError = ref(false)
     
 function back(){
-    if(props.type === 0) {stats.updateAdmin('Book')}
-    else {stats.updateReader('Login')}
+    if(props.type === 0) {stats.updateAdmin('Home')}
+    else {stats.updateReader('Home')}
 }
     
 function register(){

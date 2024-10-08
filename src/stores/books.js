@@ -51,6 +51,15 @@ export const useBooks = defineStore('books', () => {
         return count
     }
 
+    function getBookByBookId(bookId){
+        for(let i = 0; i < books.value.length; i++){
+            if(bookId === books.value[i].bookId.toString()){
+                return books.value[i]
+            }
+        }
+        return null
+    }
+
     function importBooks(titleId, number){
         for(let i = 0; i < number; i++){
             books.value.push({bookId: nextId.value, titleId: titleId, bookStat: 'Stock'})
@@ -98,5 +107,7 @@ export const useBooks = defineStore('books', () => {
         }
     }
 
-    return{thead, books, searchBook, searchAvailable, searchNumber, importBooks, editBook, updateBatchBooks, deleteBooks, deleteBook}
+    return{thead, books,
+        searchBook, searchAvailable, searchNumber, getBookByBookId,
+        importBooks, editBook, updateBatchBooks, deleteBooks, deleteBook}
 })
