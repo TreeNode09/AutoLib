@@ -23,10 +23,9 @@ const props = defineProps(['type'])
 const usernameError = ref(false)
 const passwordError = ref(false)
 const loginError = ref(false)
-    
+
 function toHome(){
-    if(props.type === 0) {stats.updateAdmin('Home')}
-    else {stats.updateReader('Borrow')}
+    stats.updateReader('Home')
 }
     
 function login(){
@@ -47,7 +46,8 @@ function login(){
             else{
                 window.localStorage.setItem('reader', JSON.stringify(result))
             }
-            toHome()
+            if(props.type === 0) {stats.updateAdmin('Home')}
+            else {stats.updateReader('Borrow')}
         }
         else {loginError.value = true}
     }

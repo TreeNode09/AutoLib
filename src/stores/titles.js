@@ -5,9 +5,7 @@ import { useBooks } from './books'
 export const useTitles = defineStore('titles', () => {
     const thead = ref({titleId: 0, title: '', isbn: '', number: 0})
 
-    const titles = ref([
-        {titleId: 0, title: 'Test', isbn: '9787000000001'}
-    ])
+    const titles = ref([])
     
     const nextId = ref(1)
     const isbnReg = new RegExp('9787[0-9]{9}')
@@ -157,7 +155,6 @@ export const useTitles = defineStore('titles', () => {
 
             for(let j = 0; j < titles.value.length; j++){
                 if(titles.value[j].titleId === book.titleId){
-                    console.log(titles.value[j])
                     if(i === 0){
                         if(book.bookStat === 'Shelf') {scanType = 'Borrow'}
                         else if(book.bookStat === 'Lent') {scanType = 'Return'}
@@ -168,11 +165,13 @@ export const useTitles = defineStore('titles', () => {
                         if(i > reader.maxBook) {return(['Books more than maxBook!', null])}
                     }
                     else if(scanType === 'Return') {
-                        if(book.bookStat !== 'Shelf') {return(['Can\'t both borrow and return!', null])}
-                        if(book.readerId !== reader.readerId) {return(['Can\'t return books of others!', null])}
+                        if(book.bookStat === 'Shelf') {return(['Can\'t both borrow and return!', null])}
+                        if(book.readerId !== reader.userId) {return(['Can\'t return books of others!', null])}
                         if(i > reader.maxBook) {return(['Ha?', null])}
                     }
-                    results.push(titles.value[j])
+                    let result = Object.assign({}, titles.value[j])
+                    result.bookId = book.bookId
+                    results.push(result)
                 }
             }
         }

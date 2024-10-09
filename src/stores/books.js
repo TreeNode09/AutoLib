@@ -53,7 +53,7 @@ export const useBooks = defineStore('books', () => {
 
     function getBookByBookId(bookId){
         for(let i = 0; i < books.value.length; i++){
-            if(bookId === books.value[i].bookId.toString()){
+            if(bookId.toString() === books.value[i].bookId.toString()){
                 return books.value[i]
             }
         }
@@ -107,7 +107,25 @@ export const useBooks = defineStore('books', () => {
         }
     }
 
+    function borrowBooks(newBooks, reader){
+        for(let i = 0; i < newBooks.length; i++){
+            let book = getBookByBookId(newBooks[i].bookId)
+            book.bookStat = 'Lent'
+            delete book.shelf
+            book.readerId = reader.userId
+        }
+    }
+
+    function returnBooks(newBooks){
+        for(let i = 0; i < newBooks.length; i++){
+            let book = getBookByBookId(newBooks[i].bookId)
+            book.bookStat = 'Stock'
+            delete book.readerId
+        }
+    }
+
     return{thead, books,
         searchBook, searchAvailable, searchNumber, getBookByBookId,
-        importBooks, editBook, updateBatchBooks, deleteBooks, deleteBook}
+        importBooks, editBook, updateBatchBooks, deleteBooks, deleteBook,
+        borrowBooks, returnBooks}
 })

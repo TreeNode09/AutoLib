@@ -8,6 +8,7 @@
     
     <home v-if="stats.readerStat==='Home'"></home>
     <borrow v-if="stats.readerStat==='Borrow'"></borrow>
+    <finish v-if="stats.readerStat==='Finish'"></finish>
 </div>
 </template>
 
@@ -21,6 +22,7 @@ import book from '@/components/BookView.vue'
 
 import home from '@/components/ReaderHome.vue'
 import borrow from '@/components/BorrowView.vue'
+import finish from '@/components/FinishView.vue'
 
 const stats = useStats()
 

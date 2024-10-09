@@ -10,10 +10,10 @@
 
 <div v-if="isShowing" class="table-out"><table>
     <tr>
-        <th v-for="key in Object.keys(titles.thead)">{{ key }}</th>
+        <th v-for="key in thead">{{ key }}</th>
     </tr>
     <tr v-for="result in results">
-        <td v-for="key in Object.keys(titles.thead)">{{ result[key] }}</td>
+        <td v-for="key in thead">{{ result[key] }}</td>
     </tr>
 </table></div>
 <div v-if="isShowing">
@@ -40,6 +40,7 @@ const fileString = ref('')
 const isScanning = ref(false)
 const scanMessage = ref('')
 
+const thead = ref(['bookId', 'titleId', 'title'])
 const results = ref([])
 const isShowing = ref(false)
 
@@ -63,7 +64,6 @@ function readFile(event){
 
 function scanBooks(){
     let scanInfo = titles.scanBooks(fileString.value, reader)
-    console.log(scanInfo)
     scanMessage.value = scanInfo[0]
     results.value = scanInfo[1]
     if(results.value !== null) {isShowing.value = true}
@@ -77,12 +77,12 @@ function cancelScan(){
 }
 
 function borrowBooks(){
-    books.borrowBooks(results.value)
+    books.borrowBooks(results.value, reader)
     stats.updateReader('Finish')
 }
 
 function returnBooks(){
-    books.returnBooks(results.value)
+    books.returnBooks(results.value, reader)
     stats.updateReader('Finish')
 }
 </script>
