@@ -4,17 +4,19 @@
 <div>
     <input type="file" accept=".txt" ref="newFile" @change="readFile">
     <button v-if="isScanning" @click="scanBooks()">Scan</button>
-    <button v-if="isScanning" @click="cancelScan()">Cancel</button>
+    <button v-if="isScanning" @click="endScan()">Cancel</button>
 </div>
 <small><span v-if="scanMessage!=='Borrow'&&scanMessage!=='Return'">{{ scanMessage }}</span></small>
 
 <div v-if="isShowing" class="table-out"><table>
-    <tr>
-        <th v-for="key in thead">{{ key }}</th>
-    </tr>
-    <tr v-for="result in results">
-        <td v-for="key in thead">{{ result[key] }}</td>
-    </tr>
+    <thead><tr>
+        <th v-for="key in head">{{ key }}</th>
+    </tr></thead>
+    <tbody>
+        <tr v-for="result in results">
+            <td v-for="key in head">{{ result[key] }}</td>
+        </tr>
+    </tbody>
 </table></div>
 <div v-if="isShowing">
     <button v-if="scanMessage==='Borrow'" @click="borrowBooks">Confirm to borrow</button>
@@ -40,7 +42,7 @@ const fileString = ref('')
 const isScanning = ref(false)
 const scanMessage = ref('')
 
-const thead = ref(['bookId', 'titleId', 'title'])
+const head = ref(['bookId', 'titleId', 'title'])
 const results = ref([])
 const isShowing = ref(false)
 
@@ -68,10 +70,10 @@ function scanBooks(){
     results.value = scanInfo[1]
     if(results.value !== null) {isShowing.value = true}
     
-    cancelScan()
+    endScan()
 }
 
-function cancelScan(){
+function endScan(){
     newFile.value.value = ''
     isScanning.value = false
 }

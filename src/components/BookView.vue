@@ -37,7 +37,7 @@
                     <span v-if="isDeleting===false">                    
                         <button v-if="editingIndex!==index" @click="editTitle(result, index)">E</button>
                         <button v-if="editingIndex===index" @click="saveEdit(result)">√</button>
-                        <button v-if="editingIndex===index" @click="cancelEdit()">x</button>
+                        <button v-if="editingIndex===index" @click="endEdit()">x</button>
                     </span>
                     <button v-else @click="deleteTitle(result, index)" class="red">D</button>
                 </span>
@@ -187,13 +187,13 @@ function editTitle(info, index){
 }
 
 function saveEdit(info){
-    editError.value = titles.editTitle(info.titleId, editInfo.value)
-    if(editError.value === 'isOK') {info = Object.assign({}, editInfo.value)}  
-    cancelEdit()
+    editError.value = titles.editTitle(editInfo.value)
+    if(editError.value === 'OK') {info = Object.assign({}, editInfo.value)}  
+    endEdit()
     search()
 }
 
-function cancelEdit(){
+function endEdit(){
     editInfo.value = {}
     editingIndex.value = -1
 }

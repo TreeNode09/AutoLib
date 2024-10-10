@@ -3,29 +3,62 @@ import { defineStore } from 'pinia'
 import { useBooks } from './books'
 
 export const useTitles = defineStore('titles', () => {
-    const thead = ref({titleId: 0, title: '', isbn: '', number: 0})
-
-    const titles = ref([])
-    
-    const nextId = ref(1)
-    const isbnReg = new RegExp('9787[0-9]{9}')
 
     const books = useBooks()
 
+    const thead = ref({
+        titleId: 0,
+        title: '',
+        isbn: '',
+        number: 0})         //搜索界面的表头，包含所有书目的信息
+    const titles = ref([])  //书目列表
+
+    const nextId = ref(1)   //新书的titleId
+    const isbnReg = new RegExp('9787[0-9]{9}')  //ISBN号的格式，9787开头，13位数字
+
+    //功能：根据属性搜索书目，返回书目索引
+    function getTitleIndex(info, key){
+
+        for(let i = 0; i < titles.value.length; i++){
+            if(info === titles.value[i][key]) {return i}
+        }
+
+        return -1
+    }
+
+    //功能：检查书目的标题、ISBN号和数量信息，并在数据库中查重
+    function checkTitle(title){
+        
+        if(Object.hasOwn(title, 'title') === false) {return('One book does\'t have a title!')}
+        else if(Object.hasOwn(title, 'isbn') === false) {return('"' + title.title + '" does\'t have an ISBN code!')}
+        else if(isbnReg.test(title.isbn) === false) {return('"' + title.title + '" has an invalid ISBN code!')}
+        else if(Object.hasOwn(title, 'number') === false) {return('"' + title.title + '" does\'t have a number!')}
+        else if(Number(title.number) === NaN || Number(title.number) < 0) {return('"' + title.title + '" has an invalid number!')}
+        //检查数据库中是否有ISBN号相同的书目
+        let i = getTitleIndex(title.isbn, 'isbn')
+        if(i !== -1){
+            if(titles.value[i].title !== title.title) {return('"' + title.title + '" contradicts with existing books!')}
+            else {title.titleId = titles.value[i].titleId}
+        }
+        
+        return('OK')
+    }
+
+    //功能：搜索书目-优先按照ISBN号搜索，输入为空时返回所有书目
+    //输入：搜索字符串  返回：搜素结果数组
     function searchTitle(searchText){
+
         let results = []
 
         if(isbnReg.test(searchText) === true){
-            for(let i = 0; i < titles.value.length; i++){
-                if(titles.value[i].isbn === searchText){
-                    //补充图书的数量信息
-                    let result = Object.assign({}, titles.value[i])
-                    result.available = books.searchAvailable(titles.value[i].titleId)
-                    result.number = books.searchNumber(titles.value[i].titleId)
-                    results.push(result)
-                    break
-                }
-            }
+            let i = getTitleIndex(searchText, 'isbn')
+            if(i === -1) {return results}
+
+            let result = Object.assign({}, titles.value[i])
+            result.available = books.searchAvailable(titles.value[i].titleId)
+            //补充图书的数量信息
+            result.number = books.searchNumber(titles.value[i].titleId)
+            results.push(result)
         }
         else{            
             for(let i = 0; i < titles.value.length; i++){
@@ -41,25 +74,10 @@ export const useTitles = defineStore('titles', () => {
         return results
     }
 
-    function checkTitle(title){
-        if(Object.hasOwn(title, 'title') === false) {return('One book does\'t have a title!')}
-        else if(Object.hasOwn(title, 'title') === false) {return('"' + title.title + '" does\'t have an ISBN code!')}
-        else if(isbnReg.test(title.isbn) === false) {return('"' + title.title + '" has an invalid ISBN code!')}
-        else if(Object.hasOwn(title, 'title') === false) {return('"' + title.title + '" does\'t have a number!')}
-        else if(Number(title.number) === NaN || Number(title.number) < 0)
-        {return('"' + title.title + '" has an invalid number!')}
-
-        for(let i = 0; i < titles.value.length; i++){
-            if(titles.value[i].isbn === title.isbn){
-                if(titles.value[i].title !== title.title) {return('"' + title.title + '" contradicts with existing books!')}
-                else {title.titleId = titles.value[i].titleId}
-            }
-        }
-        return('OK')
-    }
-
+    //功能：导入图书-分析文件，添加或更新书目信息，添加书本信息；所有数据检查无误后一并存入数据库
+    //输入：文件字符串  返回：操作信息，成功为'OK'，下同
     function importBatchTitles(str){
-        //所有数据最后一并存入数据库，存入前不更新数据库信息
+
         let newTitles = []
         let newId = nextId.value
         //读取文件，行间\n，属性间\t，键值间:
@@ -71,12 +89,9 @@ export const useTitles = defineStore('titles', () => {
             for(let j = 0; j < props.length; j++){
                 let splited = props[j].split(':')
                 if(splited.length !== 2){return('Invalid file format!')}
-
-                let key = splited[0]
-                let val = splited[1]                
-                newTitle[key] = val
+                newTitle[splited[0]] = splited[1]
             }
-            //查重
+
             let errorMessage = checkTitle(newTitle)
             if(errorMessage !== 'OK') {return(errorMessage)}
 
@@ -86,97 +101,101 @@ export const useTitles = defineStore('titles', () => {
                     else {newTitle.titleId = newTitles[j].titleId}
                 }
             }
-            //titleId为-1说明是新标题，赋新的titleId
+            //新标题，赋新的titleId
             if(newTitle.titleId === -1) {newTitle.titleId = newId++}
-            //将number属性从字符串转成数字
+
             newTitle.number = Number(newTitle.number)
-            //将新标题暂存到数组中，不直接放入数据库
             newTitles.push(newTitle)
         }
-        //导入文件中的信息已经检查无误，放入数据库
+
         for(let i = 0; i < newTitles.length; i++){
-            //先将新出现的属性存入thead，方便显示
+            //更新thead，不影响已有信息
             Object.assign(thead.value, newTitles[i])
-            //更新图书信息
+            //更新图书信息，number只用于此处
             books.importBooks(newTitles[i].titleId, newTitles[i].number)
-            //number不需要存储
             delete newTitles[i].number
-            //比nextId小，说明是已有标题
+            //比nextId小，说明是已有标题，更新信息
             if(newTitles[i].titleId < nextId.value){
-                for(let j = 0; j < titles.value.length; j++){
-                    if(titles.value[j].titleId === newTitles[i].titleId){
-                        //更新thead
-                        Object.assign(titles.value[j], newTitles[i])
-                    }
-                }
+                let j = getTitleIndex(newTitles[i].titleId, 'titleId')
+                if(j !== -1) {return('Can\'t find title!')}
+
+                Object.assign(titles.value[j], newTitles[i])
             }
-            else{
-                titles.value.push(newTitles[i])
-                nextId.value = newTitles[i].titleId + 1
-            }
+            else {titles.value.push(newTitles[i])}            
         }
+        nextId.value = newId
+
         return('OK')
     }
 
-    function editTitle(titleId, info){
+    //功能：修改书目-将新信息保存到数据库中
+    //输入：修改后的书目对象    返回：操作信息
+    function editTitle(info){
+
         let errorMessage = checkTitle(info)
         if(errorMessage !== 'OK') {return(errorMessage)}
 
-        for(let i = 0; i < titles.value.length; i++){
-            if(titles.value[i].titleId === titleId){
-                titles.value[i] = info
-                return('OK')
-            }
-        }
+        let i = getTitleIndex(info.titleId, 'titleId')
+        if(i === -1) {return('Can\'t find title!')}
+
+        titles.value[i] = info
+
+        return('OK')
     }
 
+    //功能：删除书目-删除时一并删除对应的书本，只能删除库存中的书目
+    //输入：要删除的titleId     返回：操作信息
     function deleteTitle(titleId){
-        for(let i = 0; i < titles.value.length; i++){
-            if(titles.value[i].titleId === titleId){
-                let deletingBooks = books.searchBook(titleId)
-                for(let j = 0; j < deletingBooks.length; j++){
-                    if(deletingBooks[j].bookStat !== 'Stock') {return("One book is not in stock!")}
-                }
-                titles.value.splice(i, 1)
-                books.deleteBooks(titleId)
-                return('OK')
-            }
+
+        let i = getTitleIndex(titleId, 'titleId')
+        if(i === -1) {return('Can\'t find title!')}
+
+        let deletingBooks = books.searchBook(titleId)
+        for(let j = 0; j < deletingBooks.length; j++){
+            if(deletingBooks[j].bookStat !== 'Stock') {return("Only delete books in stock!")}
         }
+        titles.value.splice(i, 1)
+        books.deleteBooks(titleId)
+
+        return('OK')
     }
 
+    //功能：检查待借还图书
+    //输入：文件字符串，读者信息  返回：[检查信息(成功为'Borrow'或'Return')，图书信息数组]
     function scanBooks(str, reader){
-        let results = []
-        let scanType = ''
 
+        let results = []
+        let scanMessage = ''
+        //文件每行一个bookId
         let lines = str.split('\r\n')
         for(let i = 0; i < lines.length; i++){
             let book = books.getBookByBookId(lines[i])
             if(book === null) {return(['Invalid bookId!', null])}
 
-            for(let j = 0; j < titles.value.length; j++){
-                if(titles.value[j].titleId === book.titleId){
-                    if(i === 0){
-                        if(book.bookStat === 'Shelf') {scanType = 'Borrow'}
-                        else if(book.bookStat === 'Lent') {scanType = 'Return'}
-                    }
-                    if(book.bookStat === 'Stock') {return(['Can\'t return book in stock!', null])}
-                    if(scanType === 'Borrow'){
-                        if(book.bookStat === 'Lent') {return(['Can\'t both borrow and return!', null])}
-                        if(i > reader.maxBook) {return(['Books more than maxBook!', null])}
-                    }
-                    else if(scanType === 'Return') {
-                        if(book.bookStat === 'Shelf') {return(['Can\'t both borrow and return!', null])}
-                        if(book.readerId !== reader.userId) {return(['Can\'t return books of others!', null])}
-                        if(i > reader.maxBook) {return(['Ha?', null])}
-                    }
-                    let result = Object.assign({}, titles.value[j])
-                    result.bookId = book.bookId
-                    results.push(result)
-                }
+            let j = getTitleIndex(book.titleId, 'titleId')
+            if(j === -1) {return(['Can\'t find title!', null])}
+            //不能同时借还
+            if(i === 0){
+                if(book.bookStat === 'Shelf') {scanMessage = 'Borrow'}
+                else if(book.bookStat === 'Lent') {scanMessage = 'Return'}
             }
+            if(book.bookStat === 'Stock') {return(['Can\'t return book in stock!', null])}
+            if(scanMessage === 'Borrow'){
+                if(book.bookStat === 'Lent') {return(['Can\'t both borrow and return!', null])}
+                if(i > reader.maxBook) {return(['Books more than maxBook!', null])}
+            }
+            else if(scanMessage === 'Return') {
+                if(book.bookStat === 'Shelf') {return(['Can\'t both borrow and return!', null])}
+                if(book.readerId !== reader.userId) {return(['Can\'t return books of others!', null])}
+                if(i > reader.maxBook) {return(['Ha?', null])}
+            }
+
+            let result = Object.assign({}, titles.value[j])
+            result.bookId = book.bookId
+            results.push(result)
         }
 
-        return [scanType, results]
+        return [scanMessage, results]
     }
 
     return{thead, titles, searchTitle, importBatchTitles, editTitle, deleteTitle, scanBooks}
