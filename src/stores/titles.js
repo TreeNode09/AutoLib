@@ -6,13 +6,13 @@ export const useTitles = defineStore('titles', () => {
 
     const books = useBooks()
 
+    const titles = ref([])  //书目列表
     const thead = ref({
         titleId: 0,
         title: '',
         isbn: '',
         number: 0})         //搜索界面的表头，包含所有书目的信息
-    const titles = ref([])  //书目列表
-
+    
     const nextId = ref(1)   //新书的titleId
     const isbnReg = new RegExp('9787[0-9]{9}')  //ISBN号的格式，9787开头，13位数字
 
@@ -66,18 +66,21 @@ export const useTitles = defineStore('titles', () => {
         if(isbnReg.test(searchText) === true){
             let T = getTitle(searchText, 'isbn')
             if(T === null) {return results}
+
             let result = Object.assign({}, T)
-            result.available = books.searchAvailable(T.titleId)
             //补充图书的数量信息
-            result.number = books.searchNumber(T.titleId)
+            let numbers = books.getNumber(T.titleId)
+            result.available = numbers[0]
+            result.number = numbers[1]
             results.push(result)
         }
         else{            
             for(let i = 0; i < titles.value.length; i++){
                 if(titles.value[i].title.search(searchText) !== -1){
                     let result = Object.assign({}, titles.value[i])
-                    result.available = books.searchAvailable(titles.value[i].titleId)
-                    result.number = books.searchNumber(titles.value[i].titleId)
+                    let numbers = books.getNumber(titles.value[i].titleId)
+                    result.available = numbers[0]
+                    result.number = numbers[1]
                     results.push(result)
                 }
             }
@@ -160,7 +163,7 @@ export const useTitles = defineStore('titles', () => {
         let T = getTitle(titleId, 'titleId')
         if(T === null) {return('Can\'t find title!')}
 
-        let deletingBooks = books.searchBook(titleId)
+        let deletingBooks = books.getBooks(titleId, 'titleId', 0)
         for(let j = 0; j < deletingBooks.length; j++){
             if(deletingBooks[j].bookStat !== 'Stock') {return("Only delete books in stock!")}
         }
@@ -182,29 +185,29 @@ export const useTitles = defineStore('titles', () => {
         //文件每行一个bookId
         let lines = str.split('\r\n')
         for(let i = 0; i < lines.length; i++){
-            let book = books.getBookByBookId(lines[i])
-            if(book === null) {return(['Invalid bookId!', null])}
+            let B = books.getBook(lines[i])
+            if(B === null) {return(['Invalid bookId!', null])}
 
-            let T = getTitle(book.titleId, 'titleId')
+            let T = getTitle(B.titleId, 'titleId')
             if(T === null) {return(['Can\'t find title!', null])}
             //不能同时借还
             if(i === 0){
-                if(book.bookStat === 'Shelf') {scanMessage = 'Borrow'}
-                else if(book.bookStat === 'Lent') {scanMessage = 'Return'}
+                if(B.bookStat === 'Shelf') {scanMessage = 'Borrow'}
+                else if(B.bookStat === 'Lent') {scanMessage = 'Return'}
             }
-            if(book.bookStat === 'Stock') {return(['Can\'t return book in stock!', null])}
+            if(B.bookStat === 'Stock') {return(['Can\'t return book in stock!', null])}
             if(scanMessage === 'Borrow'){
-                if(book.bookStat === 'Lent') {return(['Can\'t both borrow and return!', null])}
+                if(B.bookStat === 'Lent') {return(['Can\'t both borrow and return!', null])}
                 if(i > reader.maxBook) {return(['Books more than maxBook!', null])}
             }
             else if(scanMessage === 'Return') {
-                if(book.bookStat === 'Shelf') {return(['Can\'t both borrow and return!', null])}
-                if(book.readerId !== reader.userId) {return(['Can\'t return books of others!', null])}
+                if(B.bookStat === 'Shelf') {return(['Can\'t both borrow and return!', null])}
+                if(B.readerId !== reader.userId) {return(['Can\'t return books of others!', null])}
                 if(i > reader.maxBook) {return(['Ha?', null])}
             }
 
             let result = Object.assign({}, T)
-            result.bookId = book.bookId
+            result.bookId = B.bookId
             results.push(result)
         }
 

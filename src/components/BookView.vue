@@ -146,7 +146,7 @@ function search(){
 }
 
 function showBooks(info, index){
-    showedBooks.value = books.searchBook(info.titleId, props.type)
+    showedBooks.value = books.getBooks(info.titleId, 'titleId', props.type)
     showingIndex.value = index
 }
 

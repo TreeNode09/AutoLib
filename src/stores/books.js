@@ -2,62 +2,74 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
 export const useBooks = defineStore('books', () => {
-    const thead = ref({bookId: 0, titleId: 0, bookStat: 'Stock', shelf: '', readerId: 0, lendDate: 0})
-    
-    const books = ref([
-        {bookId: 0, titleId: 0, bookStat: 'Stock'}
-    ])
+     
+    const books = ref([])   //书本信息
+    const thead = ref({
+        bookId: 0,
+        titleId: 0,
+        bookStat: 'Stock',
+        shelf: '',
+        readerId: 0,
+        lendDate: 0})       //搜索界面的表头
 
-    const nextId = ref(1)
+    const nextId = ref(1)   //新书的bookId
 
-    function searchBook(titleId, type){
-        let result = []
+    function getBook(bookId){
+        
         for(let i = 0; i < books.value.length; i++){
-            if(books.value[i].titleId === titleId){
-                if(type === 1){
-                    if(books.value[i].bookStat === 'Shelf'){
-                        let info = {}
-                        let keys = Object.keys(thead.value)
-                        for(let j = 0; j < 4; j++){
-                            info[keys[j]] = books.value[i][keys[j]]
-                        }
-                        result.push(info)
-                    }
-                }
-                else {result.push(books.value[i])}               
-            }
+            if(bookId.toString() === books.value[i].bookId.toString()) {return books.value[i]}
         }
 
-        return result
-    }
-
-    function searchAvailable(titleId){
-        let count = 0
-        for(let i = 0; i < books.value.length; i++){
-            if(books.value[i].titleId === titleId){
-                if(books.value[i].bookStat === 'Shelf') {count++}
-            }
-        }
-
-        return count
-    }
-
-    function searchNumber(titleId){
-        let count = 0
-        for(let i = 0; i < books.value.length; i++){
-            if(books.value[i].titleId === titleId) {count++}
-        }
-
-        return count
-    }
-
-    function getBookByBookId(bookId){
-        for(let i = 0; i < books.value.length; i++){
-            if(bookId.toString() === books.value[i].bookId.toString()){
-                return books.value[i]
-            }
-        }
         return null
+    }
+
+    function getBooks(info, key, type){
+
+        let results = []
+
+        for(let i = 0; i < books.value.length; i++){
+            if(info.toString() === books.value[i][key].toString()){
+                if(type === 0) {results.push(books.value[i])}
+                //对于读者搜索界面，只返回上架书本的信息
+                else if(books.value[i].bookStat === 'Shelf'){
+                    let info = {}
+                    let keys = Object.keys(thead.value)
+                    for(let j = 0; j < 4; j++) {info[keys[j]] = books.value[i][keys[j]]}
+                    results.push(info)
+                }            
+            }
+        }
+
+        return results
+    }
+
+    function setBook(bookId, info, key){
+
+        for(let i = 0; i < books.value.length; i++){
+            if(bookId === books.value[i].bookId){
+                if(key === 'all') {books.value[i] = info}
+                else if(info === 'DELETE') {delete books.value[i][key]}
+                else {books.value[i][key] = info}
+                return('OK')
+            }
+        }
+
+        return('Not found!')
+    }
+
+    function getNumber(titleId){
+
+        let numbers = [0, 0]
+        let results = getBooks(titleId, 'titleId', 0)
+
+        for(let i = 0; i < results.length; i++){
+            if(titleId === results[i].titleId){
+                numbers[1]++
+                if(results[i].bookStat === 'Shelf') {numbers[0]++}
+            }
+        }
+
+        return numbers
     }
 
     function importBooks(titleId, number){
@@ -68,64 +80,78 @@ export const useBooks = defineStore('books', () => {
     }
 
     function editBook(bookId, info){
-        for(let i = 0; i < books.value.length; i++){
-            if(books.value[i].bookId === bookId){
-                books.value[i] = info
-                return('OK')
-            }
-        }
+        
+        let setMessage = setBook(bookId, info, 'all')
+        if(setMessage !== 'OK') {return(setMessage)}
+
+        return('OK')
     }
 
     function updateBatchBooks(str){
+
         let lines = str.split('\r\n')
         for(let i = 0; i < lines.length; i++){
             let splited = lines[i].split(' ')
-            for(let j = 0; j < books.value.length; j++){
-                if(splited[0] === books.value[j].bookId.toString()){
-                    books.value[j].bookStat = 'Shelf'
-                    books.value[j].shelf = splited[1]
-                }
-            }
+
+            let B = getBook(splited[0])
+            if(B === null) {return('Can\'t find book!')}
+
+            setBook(B.bookId, 'Shelf', 'bookStat')
+            setBook(B.bookId, splited[1], 'shelf')
         }
+
         return('OK')
     }
 
     function deleteBooks(titleId){
+
         for(let i = 0; i < books.value.length; i++){
-            if(books.value[i].titleId === titleId){
-                books.value.splice(i, 1)
-            }
+            if(books.value[i].titleId === titleId) {books.value.splice(i, 1)}
         }
     }
     
     function deleteBook(bookId){
+
         for(let i = 0; i < books.value.length; i++){
             if(books.value[i].bookId === bookId){
+                if(books.value[i].bookStat !== 'Stock') {return('Only delete book in stock!')}
                 books.value.splice(i , 1)
                 return('OK')
             }
         }
+
+        return('Can\'t find book!')
     }
 
     function borrowBooks(newBooks, reader){
+
         for(let i = 0; i < newBooks.length; i++){
-            let book = getBookByBookId(newBooks[i].bookId)
-            book.bookStat = 'Lent'
-            delete book.shelf
-            book.readerId = reader.userId
+            let B = getBook(newBooks[i].bookId)
+            if(B === null) {return('Can\'t find book!')}
+
+            setBook(B.bookId, 'Lent', 'bookStat')
+            setBook(B.bookId, 'DELETE', 'shelf')
+            setBook(B.bookId, reader.userId, 'readerId')
         }
+
+        return('OK')
     }
 
     function returnBooks(newBooks){
+
         for(let i = 0; i < newBooks.length; i++){
-            let book = getBookByBookId(newBooks[i].bookId)
-            book.bookStat = 'Stock'
-            delete book.readerId
+            let B = getBook(newBooks[i].bookId)
+            if(B === null) {return('Can\'t find book!')}
+
+            setBook(B.bookId, 'Stock', 'bookStat')
+            setBook(B.bookId, 'DELETE', 'readerId')
         }
+
+        return('OK')
     }
 
     return{thead, books,
-        searchBook, searchAvailable, searchNumber, getBookByBookId,
-        importBooks, editBook, updateBatchBooks, deleteBooks, deleteBook,
+        getBook, getBooks, setBook,
+        getNumber, importBooks, editBook, updateBatchBooks, deleteBooks, deleteBook,
         borrowBooks, returnBooks}
 })
