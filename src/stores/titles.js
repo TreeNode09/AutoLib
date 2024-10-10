@@ -16,17 +16,30 @@ export const useTitles = defineStore('titles', () => {
     const nextId = ref(1)   //新书的titleId
     const isbnReg = new RegExp('9787[0-9]{9}')  //ISBN号的格式，9787开头，13位数字
 
-    //功能：根据属性搜索书目，返回书目索引
-    function getTitleIndex(info, key){
+    function getTitle(info, key){
 
         for(let i = 0; i < titles.value.length; i++){
-            if(info === titles.value[i][key]) {return i}
+            if(info === titles.value[i][key]) {return titles.value[i]}
         }
 
-        return -1
+        return null
+    }
+
+    function setTitle(titleId, info, key){
+
+        for(let i = 0; i < titles.value.length; i++){
+            if(titleId === titles.value[i].titleId){
+                if(key === 'all') {titles.value[i] = info}
+                else {titles.value[i][key] = info}
+                return('OK')
+            }
+        }
+
+        return('Not found!')
     }
 
     //功能：检查书目的标题、ISBN号和数量信息，并在数据库中查重
+    //输入：书目对象    返回：操作信息，成功为'OK'，下同
     function checkTitle(title){
         
         if(Object.hasOwn(title, 'title') === false) {return('One book does\'t have a title!')}
@@ -35,10 +48,10 @@ export const useTitles = defineStore('titles', () => {
         else if(Object.hasOwn(title, 'number') === false) {return('"' + title.title + '" does\'t have a number!')}
         else if(Number(title.number) === NaN || Number(title.number) < 0) {return('"' + title.title + '" has an invalid number!')}
         //检查数据库中是否有ISBN号相同的书目
-        let i = getTitleIndex(title.isbn, 'isbn')
-        if(i !== -1){
-            if(titles.value[i].title !== title.title) {return('"' + title.title + '" contradicts with existing books!')}
-            else {title.titleId = titles.value[i].titleId}
+        let T = getTitle(title.isbn, 'isbn')
+        if(T !== null){
+            if(title.title !== T.title) {return('"' + title.title + '" contradicts with existing books!')}
+            else {title.titleId = T.titleId}
         }
         
         return('OK')
@@ -51,13 +64,12 @@ export const useTitles = defineStore('titles', () => {
         let results = []
 
         if(isbnReg.test(searchText) === true){
-            let i = getTitleIndex(searchText, 'isbn')
-            if(i === -1) {return results}
-
-            let result = Object.assign({}, titles.value[i])
-            result.available = books.searchAvailable(titles.value[i].titleId)
+            let T = getTitle(searchText, 'isbn')
+            if(T === null) {return results}
+            let result = Object.assign({}, T)
+            result.available = books.searchAvailable(T.titleId)
             //补充图书的数量信息
-            result.number = books.searchNumber(titles.value[i].titleId)
+            result.number = books.searchNumber(T.titleId)
             results.push(result)
         }
         else{            
@@ -75,7 +87,7 @@ export const useTitles = defineStore('titles', () => {
     }
 
     //功能：导入图书-分析文件，添加或更新书目信息，添加书本信息；所有数据检查无误后一并存入数据库
-    //输入：文件字符串  返回：操作信息，成功为'OK'，下同
+    //输入：文件字符串  返回：操作信息
     function importBatchTitles(str){
 
         let newTitles = []
@@ -116,13 +128,13 @@ export const useTitles = defineStore('titles', () => {
             delete newTitles[i].number
             //比nextId小，说明是已有标题，更新信息
             if(newTitles[i].titleId < nextId.value){
-                let j = getTitleIndex(newTitles[i].titleId, 'titleId')
-                if(j !== -1) {return('Can\'t find title!')}
-
-                Object.assign(titles.value[j], newTitles[i])
+                let T = getTitle(newTitles[i].titleId, 'titleId')
+                if(T === null) {return('Can\'t find title!')}
+                Object.assign(T, newTitles[i])
             }
             else {titles.value.push(newTitles[i])}            
         }
+        //更新nextId
         nextId.value = newId
 
         return('OK')
@@ -135,10 +147,8 @@ export const useTitles = defineStore('titles', () => {
         let errorMessage = checkTitle(info)
         if(errorMessage !== 'OK') {return(errorMessage)}
 
-        let i = getTitleIndex(info.titleId, 'titleId')
-        if(i === -1) {return('Can\'t find title!')}
-
-        titles.value[i] = info
+        let setMessage = setTitle(info.titleId, info, 'all')
+        if(setMessage !== 'OK') {return(setMessage)}
 
         return('OK')
     }
@@ -147,14 +157,17 @@ export const useTitles = defineStore('titles', () => {
     //输入：要删除的titleId     返回：操作信息
     function deleteTitle(titleId){
 
-        let i = getTitleIndex(titleId, 'titleId')
-        if(i === -1) {return('Can\'t find title!')}
+        let T = getTitle(titleId, 'titleId')
+        if(T === null) {return('Can\'t find title!')}
 
         let deletingBooks = books.searchBook(titleId)
         for(let j = 0; j < deletingBooks.length; j++){
             if(deletingBooks[j].bookStat !== 'Stock') {return("Only delete books in stock!")}
         }
-        titles.value.splice(i, 1)
+
+        for(let i = 0; i < titles.value.length; i++){
+            if(titleId === titles.value[i].titleId) {titles.value.splice(i, 1)}
+        }
         books.deleteBooks(titleId)
 
         return('OK')
@@ -172,8 +185,8 @@ export const useTitles = defineStore('titles', () => {
             let book = books.getBookByBookId(lines[i])
             if(book === null) {return(['Invalid bookId!', null])}
 
-            let j = getTitleIndex(book.titleId, 'titleId')
-            if(j === -1) {return(['Can\'t find title!', null])}
+            let T = getTitle(book.titleId, 'titleId')
+            if(T === null) {return(['Can\'t find title!', null])}
             //不能同时借还
             if(i === 0){
                 if(book.bookStat === 'Shelf') {scanMessage = 'Borrow'}
@@ -190,7 +203,7 @@ export const useTitles = defineStore('titles', () => {
                 if(i > reader.maxBook) {return(['Ha?', null])}
             }
 
-            let result = Object.assign({}, titles.value[j])
+            let result = Object.assign({}, T)
             result.bookId = book.bookId
             results.push(result)
         }
